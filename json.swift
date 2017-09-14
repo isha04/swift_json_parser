@@ -7,6 +7,7 @@ let path = "/Users/mbp13/Documents/Swift/document.txt"
 let fileContents = try? String(contentsOfFile: path, encoding:String.Encoding.utf8)
 var file = fileContents!
 
+var test = 00
 
 func Bool_Parse (input: String) -> (output: Bool, remaining: String)? {
     var value = input[Range(uncheckedBounds: (lower: (input.startIndex), upper: (input.index((input.startIndex),offsetBy: 4))))]
