@@ -7,7 +7,6 @@ let path = "/Users/mbp13/Documents/Swift/document.txt"
 let fileContents = try? String(contentsOfFile: path, encoding:String.Encoding.utf8)
 var file = fileContents!
 
-var test = 00
 
 func Bool_Parse (input: String) -> (output: Bool, remaining: String)? {
     var value = input[Range(uncheckedBounds: (lower: (input.startIndex), upper: (input.index((input.startIndex),offsetBy: 4))))]
@@ -16,6 +15,7 @@ func Bool_Parse (input: String) -> (output: Bool, remaining: String)? {
         let remaining = input[Range(uncheckedBounds: (lower: (input.index((file.startIndex),offsetBy: 4)), upper: (input.endIndex)))]
         return(output,remaining) as (output: Bool, remaining: String)
     }
+    
     value = input[Range(uncheckedBounds: (lower: (input.startIndex), upper: (input.index((input.startIndex),offsetBy: 5))))]
     if value == "false" {
         value = input[Range(uncheckedBounds: (lower: (input.startIndex), upper: (input.index((input.startIndex),offsetBy: 5))))]
@@ -34,6 +34,7 @@ func Int_Parse (input: String) -> (output: Int, remaining: String)? {
     if c < "0" || c > "9" {
         return nil
     }
+    
     var remaining = input
     var number = ""
     while c >= "0" && c <= "9" {
@@ -41,6 +42,7 @@ func Int_Parse (input: String) -> (output: Int, remaining: String)? {
         remaining.remove(at: remaining.startIndex)
         c = remaining[remaining.startIndex]
     }
+    
     let output = Int(number)!
     return (output, remaining)
 }
@@ -73,19 +75,79 @@ func Comma_Parse(input: String) -> (output: String, remaining: String)? {
     if input[input.startIndex] != "," {
         return nil
     }
-    remaining = input[Range(uncheckedBounds: (lower: (input.index((input.startIndex),offsetBy: 1)), upper: (input.endIndex)))]
+    
+    remaining.remove(at: input.startIndex)
     return (",", remaining)
 }
 
-//
-//
-////Space Parser
-//func Space_Parse(input: String) -> String? {
-//    if input[input.startIndex] != " " {
-//        return nil
-//    }
-//    return " "
-//}
+
+//Value Parser
+
+func Value_Parse (input: String) -> (output: Any, remaining: String)? {
+    var output: Any?
+    var remaining = input
+    
+    if let result = Bool_Parse (input: remaining) {
+        output = result.output
+        remaining = result.remaining
+    }
+    
+    if let result = Int_Parse (input: remaining) {
+        output = result.output
+        remaining = result.remaining
+    }
+    
+    if let result = String_Parse (input: remaining) {
+        output = result.output
+        remaining = result.remaining
+    }
+    
+    return (output as Any, remaining)
+}
+
+
+Value_Parse(input: file)
+
+
+
+//Space Parser
+
+func space_parse (input: String) -> (output: String, remaining: String)? {
+    var remaining = input
+    var m = remaining[remaining.startIndex]
+    var output = ""
+    
+    while m == "\t" || m == "\n" || m == " " {
+        remaining.remove(at: remaining.startIndex)
+        output.append(m)
+        m = remaining[remaining.startIndex]
+    }
+    
+    return(output,remaining)
+}
+
+
+
+space_parse(input: file)
+
+
+
+//Colon Parser
+
+func colon_parse (input: String) -> (output: String, remaining: String)? {
+    var remaining = input
+    var m = remaining[remaining.startIndex]
+    
+    
+    while m == ":" {
+        remaining.remove(at: remaining.startIndex)
+        m = remaining[remaining.startIndex]
+    }
+    
+    return(":",remaining)
+}
+colon_parse(input: file)
+
 
 
 //Array Parser
@@ -102,17 +164,7 @@ func Array_Parse (input: String) -> (output: [Any], remaining: String)? {
     
     while remaining[remaining.startIndex] != "]" {
         
-        //        if let result = Value_Parse (input: remaining) {
-        //            output.append(result.output)
-        //            remaining = result.remaining
-        //        }
-        
-        if let result = Int_Parse (input: remaining) {
-            output.append(result.output)
-            remaining = result.remaining
-        }
-        
-        if let result = String_Parse (input: remaining) {
+        if let result = Value_Parse (input: remaining) {
             output.append(result.output)
             remaining = result.remaining
         }
@@ -120,8 +172,15 @@ func Array_Parse (input: String) -> (output: [Any], remaining: String)? {
         if let result = Comma_Parse (input: remaining) {
             //output.append(result.output)
             remaining = result.remaining
+            
         }
         
+        if let result = Array_Parse (input: remaining) {
+            output.append(result.output)
+            remaining = result.remaining
+        }
+        print(output)
+        print(remaining)
     }
     remaining.remove(at: remaining.startIndex)
     return(output, remaining)
@@ -129,59 +188,32 @@ func Array_Parse (input: String) -> (output: [Any], remaining: String)? {
 
 Array_Parse(input: file)
 
-//Value Parser
 
-func Value_Parse (input: String) -> (output: Any, remaining: String) {
-    var output: Any?
-    var remaining = input
+//Stringifying and pretty printing the array output to check if array parser is parsing 2D array correctly
+
+func JSONStringify(value: Any,prettyPrinted:Bool = false) -> String{
     
-    if let result = Bool_Parse (input: remaining) {
-        output = result.output as Any
-        remaining = result.remaining
+    let options = prettyPrinted ? JSONSerialization.WritingOptions.prettyPrinted : JSONSerialization.WritingOptions(rawValue: 0)
+    
+    
+    if JSONSerialization.isValidJSONObject(value) {
+        
+        do{
+            let data = try JSONSerialization.data(withJSONObject: value, options: options)
+            if let string = NSString(data: data, encoding: String.Encoding.utf8.rawValue) {
+                return string as String
+            }
+        }catch {
+            
+            print("error")
+            //Access error here
+        }
+        
     }
+    return ""
     
-    if let result = Int_Parse (input: remaining) {
-        output = result.output
-        remaining = result.remaining
-    }
-    
-    if let result = String_Parse (input: remaining) {
-        output = result.output
-        remaining = result.remaining
-    }
-    
-    if let result = Comma_Parse (input: remaining) {
-        output = result.output
-        remaining = result.remaining
-    }
-    
-    if let result = Array_Parse (input: remaining) {
-        output = result.output
-        remaining = result.remaining
-    }
-    
-    return (output as Any, remaining)
 }
 
 
-Value_Parse(input: file)
-
-//Space Parser
-
-func Space_Parse (input: String) -> (output: String, remaining: String)? {
-    var m = input[input.startIndex]
-    var space = true
-    
-    switch m {
-    case " ", "\t", "\n": space = true
-    default: space = false
-    }
-    
-    if  space == false {
-        return nil
-    }
-    
-    let remaining = input[Range(uncheckedBounds: (lower: (input.index((input.startIndex),offsetBy: 1)), upper: (input.endIndex)))]
-    return(" ", remaining)
-}
+//print(JSONStringify(value: Array_Parse(input: file)?.output as Any))
 
