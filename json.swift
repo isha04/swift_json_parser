@@ -84,30 +84,27 @@ func Comma_Parse(input: String) -> (output: String, remaining: String)? {
 //Value Parser
 
 func Value_Parse (input: String) -> (output: Any, remaining: String)? {
-    var output: Any?
-    var remaining = input
+    //let output: Any?
+    let remaining = input
     
     if let result = Bool_Parse (input: remaining) {
-        output = result.output
-        remaining = result.remaining
+        return (result.output as Any, result.remaining)
     }
     
     if let result = Int_Parse (input: remaining) {
-        output = result.output
-        remaining = result.remaining
+        //output = result.output
+        //remaining = result.remaining
+        return (result.output as Any, result.remaining)
     }
     
     if let result = String_Parse (input: remaining) {
-        output = result.output
-        remaining = result.remaining
+        //output = result.output
+        //remaining = result.remaining
+        return (result.output as Any, result.remaining)
     }
     
-    return (output as Any, remaining)
+    return nil
 }
-
-
-Value_Parse(input: file)
-
 
 
 //Space Parser
@@ -116,6 +113,10 @@ func space_parse (input: String) -> (output: String, remaining: String)? {
     var remaining = input
     var m = remaining[remaining.startIndex]
     var output = ""
+    
+    if m != "\t" || m != "\n" || m != " " {
+        return nil
+    }
     
     while m == "\t" || m == "\n" || m == " " {
         remaining.remove(at: remaining.startIndex)
@@ -129,7 +130,6 @@ func space_parse (input: String) -> (output: String, remaining: String)? {
 
 
 space_parse(input: file)
-
 
 
 //Colon Parser
@@ -187,6 +187,68 @@ func Array_Parse (input: String) -> (output: [Any], remaining: String)? {
 }
 
 Array_Parse(input: file)
+
+
+//Object Parser
+
+func Object_Parse (input: String) -> (output: [String : Any], remaining: String)? {
+    
+    if input[input.startIndex] != "{" {
+        return nil
+    }
+    
+    var key = ""
+    var value: Any?
+    var output = [String: Any]()
+    var remaining = input
+    
+    remaining.remove(at: remaining.startIndex)
+    
+    while remaining[remaining.startIndex] != "}" {
+        
+        //getting key
+        if let result = String_Parse(input: remaining) {
+            key = result.output
+            remaining = result.remaining
+        }
+        
+        //Parsing colon and getting value
+        
+        if let result = Colon_Parse (input: remaining) {
+            remaining = result.remaining
+        }
+        
+        if let result = Value_Parse(input: remaining) {
+            value = result.output
+            remaining = result.remaining
+        }
+        
+        if let result = Array_Parse(input: remaining) {
+            value = result.output
+            remaining = result.remaining
+        }
+        
+        output[key] = value
+        
+        if let result = Comma_Parse(input: remaining) {
+            remaining = result.remaining
+        }
+        
+        if let result = Object_Parse(input: remaining) {
+            value = result.output
+        }
+        
+        
+    }
+    
+    remaining.remove(at: remaining.startIndex)
+    
+    return (output, remaining)
+    
+}
+
+
+Object_Parse(input: file)
 
 
 //Stringifying and pretty printing the array output to check if array parser is parsing 2D array correctly
