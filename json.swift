@@ -1,14 +1,16 @@
 import Cocoa
 
-let path = "/Users/mbp13/Documents/Swift/twitter.txt"
+let path = "/Users/mbp13/Documents/Swift/document1.txt"
 let fileContents = try? String(contentsOfFile: path, encoding:String.Encoding.utf8)
 var file = fileContents!
-
 
 //Null Parse
 func nullParser (input:String) -> (output: AnyObject?, remaining: String)? {
     var output: AnyObject?
     
+    if input.characters.count < 4 {
+        return nil
+    }
     let value = input[Range(uncheckedBounds: (lower: (input.startIndex), upper: (input.index((input.startIndex),offsetBy: 4))))]
     if value != "null" {
         return nil
@@ -20,11 +22,14 @@ func nullParser (input:String) -> (output: AnyObject?, remaining: String)? {
     return(output, remaining)
 }
 
-
 //nullParse(input:file)
 
-
 func boolParser (input: String) -> (output: Bool, remaining: String)? {
+    
+    if input.characters.count < 5 {
+        return nil
+    }
+    
     var value = input[Range(uncheckedBounds: (lower: (input.startIndex), upper: (input.index((input.startIndex),offsetBy: 4))))]
     if value == "true" {
         let output = Bool(value)!
@@ -42,19 +47,15 @@ func boolParser (input: String) -> (output: Bool, remaining: String)? {
     return nil
 }
 
-
-
-
 //Integer Parser. Takes the remaining variable from the boolean parser
 
 //isNumber(input: file)
 
 func isNumber(value: Character) -> Bool {
-    var number = false
     if value >= "0" && value <= "9" {
-        number = true
+        return true
     }
-    return number
+    return false
 }
 
 //isNumber(value: file[file.startIndex])
@@ -81,9 +82,6 @@ func digitParser (input: String) -> (output: String, remaining: String)? {
     return (number, remaining)
 }
 
-//digitParser(input: file)
-
-
 //expoential Parser
 
 func exponentParser (input: String) -> (output: String, remaining: String)? {
@@ -109,9 +107,6 @@ func exponentParser (input: String) -> (output: String, remaining: String)? {
     return nil
 }
 
-//exponentParser(input: file)
-
-
 //Fraction Parser - will handle input such as 0.89
 
 func fractionParser(input: String) -> (output: String, remaining: String)? {
@@ -133,9 +128,6 @@ func fractionParser(input: String) -> (output: String, remaining: String)? {
     return nil
     
 }
-
-//fractionParser(input: file)
-
 
 ////zeroParser
 
@@ -202,18 +194,14 @@ func jsonNumberParser (input: String) -> (output: Double, remaining: String)? {
     
     var remaining = input
     
-    if input.hasPrefix("\"") == true {
-        return nil
-    }
-    
-    if let result = nullParser(input: remaining) {
-        return nil
-    }
-    
     var minusFlag = 1
     if remaining[remaining.startIndex] == "-" {
         minusFlag = -1
         remaining.remove(at: remaining.startIndex)
+    }
+    
+    if isNumber(value: remaining[remaining.startIndex]) == false {
+        return nil
     }
     
     var output = Double()
@@ -234,7 +222,7 @@ func jsonNumberParser (input: String) -> (output: Double, remaining: String)? {
     
 }
 
-//jsonNumberParse(input: file)
+jsonNumberParser(input: file)
 
 
 //String Parser. Takes the remaining variable from int parser
@@ -270,7 +258,6 @@ func stringParser (input:String) -> (output: String, remaining: String)? {
     return(output, remaining)
 }
 
-//print(stringParser(input: file)?.output)
 
 //Comma parser
 func commaParser(input: String) -> (output: String, remaining: String)? {
@@ -287,29 +274,35 @@ func commaParser(input: String) -> (output: String, remaining: String)? {
 //Value Parser
 
 func valueParser (input: String) -> (output: Any, remaining: String)? {
-    let remaining = input
     
-    if let result = boolParser (input: remaining) {
+    if let result = boolParser (input: input) {
         return (result.output as Any, result.remaining)
     }
     
-    if let result = jsonNumberParser (input: remaining) {
+    if let result = jsonNumberParser (input: input) {
         return (result.output as Any, result.remaining)
     }
     
-    if let result = stringParser (input: remaining) {
+    if let result = stringParser (input: input) {
         return (result.output as Any, result.remaining)
     }
     
-    if let result = nullParser (input: remaining) {
+    if let result = nullParser (input: input) {
         return (result.output as Any, result.remaining)
     }
     
+    if let result = arrayParser (input: input) {
+        return (result.output as Any, result.remaining)
+    }
+    
+    if let result = objectParser (input: input) {
+        return (result.output as Any, result.remaining)
+    }
     return nil
 }
 
 
-//Value_Parse(input: file)
+//valueParser(input: file)
 
 
 //Colon Parser
@@ -366,7 +359,7 @@ func spaceParser (input: String) -> (output: String, remaining: String)? {
 //Space_Parser(input: file)
 
 
-//Array Parser
+//Parser
 
 func arrayParser (input: String) -> (output: [Any], remaining: String)? {
     if input[input.startIndex] != "[" {
@@ -380,6 +373,7 @@ func arrayParser (input: String) -> (output: [Any], remaining: String)? {
     
     while remaining[remaining.startIndex] != "]" {
         
+        
         if let result = spaceParser(input: remaining) {
             remaining = result.remaining
         }
@@ -387,16 +381,6 @@ func arrayParser (input: String) -> (output: [Any], remaining: String)? {
         if let result = valueParser (input: remaining) {
             output.append(result.output)
             remaining = result.remaining
-        }
-        
-        if let result = objectParser (input: remaining) {
-            output.append(result.output)
-            remaining = result.remaining
-        }
-        
-        if let result = arrayParser (input: remaining) {
-            remaining = result.remaining
-            output.append(result.output)
         }
         
         if let result = spaceParser(input: remaining) {
@@ -412,11 +396,10 @@ func arrayParser (input: String) -> (output: [Any], remaining: String)? {
         }
         
     }
+    
     remaining.remove(at: remaining.startIndex)
     return(output, remaining)
 }
-
-//arrayParser(input: file)
 
 
 
@@ -458,30 +441,11 @@ func objectParser (input: String) -> (output: [String : Any], remaining: String)
             remaining = result.remaining
         }
         
-        
         if let result = spaceParser(input: remaining) {
             remaining = result.remaining
         }
         
         if let result = valueParser(input: remaining) {
-            value = result.output
-            remaining = result.remaining
-        }
-        
-        if let result = spaceParser(input: remaining) {
-            remaining = result.remaining
-        }
-        
-        if let result = arrayParser(input: remaining) {
-            value = result.output
-            remaining = result.remaining
-        }
-        
-        if let result = spaceParser(input: remaining) {
-            remaining = result.remaining
-        }
-        
-        if let result = objectParser(input: remaining) {
             value = result.output
             remaining = result.remaining
         }
@@ -499,8 +463,6 @@ func objectParser (input: String) -> (output: [String : Any], remaining: String)
         }
         
         output[key] = value
-        //print("\(key):\(value as Any)")
-        
     }
     
     remaining.remove(at: remaining.startIndex)
@@ -509,7 +471,20 @@ func objectParser (input: String) -> (output: [String : Any], remaining: String)
     
 }
 
-print(objectParser(input: file)?.output)
+func jsonParser (input: String) -> (output: Any, remaining: String)? {
+    
+    if let result = arrayParser(input: input) {
+        return (result.output, result.remaining)
+    }
+    
+    if let result = objectParser(input: input) {
+        return (result.output, result.remaining)
+    }
+    
+    return nil
+}
+
+print(jsonParser(input: file)?.output as Any)
 
 
 //func JSONStringify(value: Any,prettyPrinted:Bool = false) -> String{
@@ -538,7 +513,3 @@ print(objectParser(input: file)?.output)
 //let jsonStringPretty = JSONStringify(value: (objectParser(input: file)?.output) as Any, prettyPrinted: false)
 //
 //print(jsonStringPretty)
-
-
-
-
