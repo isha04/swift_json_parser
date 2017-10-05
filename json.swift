@@ -1,27 +1,35 @@
-import Cocoa
+import Foundation
 
-let path = "/Users/mbp13/Documents/Swift/document1.txt"
-let fileContents = try? String(contentsOfFile: path, encoding:String.Encoding.utf8)
-var file = fileContents!
+typealias ParseResult = (output: Any, rest: String)?
+typealias Parser = (String) -> ParseResult
 
-typealias parseResult = (output: Any, rest: String)?
+func factoryParser (parsers: Parser...) -> Parser {
+    func newParser(input: String) -> ParseResult {
+        for parser in parsers {
+            if let result = parser(input) {
+                return result
+            }
+        }
+        return nil
+    }
+    return newParser
+}
 
-//Null Parse
-func nullParser (input:String) -> (output: Any?, rest: String)? {
+struct Null {}
+
+func nullParser (input: String) -> ParseResult {
     if input.count < 4 {
         return nil
     }
-    let value = String(input[...input.index(input.startIndex, offsetBy: 3)])
-    if value != "null" {
-        return nil
+    let output = String(input[...input.index(input.startIndex, offsetBy: 3)])
+    if output == "null" {
+        let rest = String(input[input.index(input.startIndex, offsetBy: 4)...])
+        return (Null(), rest)
     }
-    let rest = String(input[input.index(input.startIndex, offsetBy: 4)...])
-    
-    return(nil, rest)
+    return nil
 }
 
-
-func boolParser (input: String) -> parseResult {
+func boolParser (input: String) -> ParseResult {
     if input.count < 5 {
         return nil
     }
@@ -48,7 +56,8 @@ func isDigit(value: String) -> Bool {
     return false
 }
 
-func digitParser (input: String) -> parseResult {
+
+func digitParser (input: String) -> ParseResult {
     var c = input[input.startIndex]
     if isDigit(value: String(c)) == false {
         return nil
@@ -65,7 +74,7 @@ func digitParser (input: String) -> parseResult {
 }
 
 
-func exponentParser (input: String) -> parseResult {
+func exponentParser (input: String) -> ParseResult {
     if input[input.startIndex] == "e" || input[input.startIndex] == "E" {
         var rest = input
         var output = String(rest[rest.startIndex])
@@ -84,7 +93,7 @@ func exponentParser (input: String) -> parseResult {
 }
 
 
-func fractionParser(input: String) -> parseResult {
+func fractionParser(input: String) -> ParseResult {
     
     if input[input.startIndex] == "." {
         var rest = input
@@ -100,7 +109,7 @@ func fractionParser(input: String) -> parseResult {
 }
 
 
-func zeroParser(input: String) -> parseResult {
+func zeroParser(input: String) -> ParseResult {
     
     var rest = input
     if rest[rest.startIndex] != "0" {
@@ -121,7 +130,7 @@ func zeroParser(input: String) -> parseResult {
 }
 
 
-func intFloatParser (input: String) -> parseResult {
+func intFloatParser (input: String) -> ParseResult {
     if input[input.startIndex] == "0" || isDigit(value: String(input[input.startIndex])) == false {
         return nil
     }
@@ -145,7 +154,7 @@ func intFloatParser (input: String) -> parseResult {
 }
 
 
-func jsonNumberParser (input: String) -> parseResult {
+func jsonNumberParser (input: String) -> ParseResult {
     var rest = input
     var minusFlag = 1
     if rest[rest.startIndex] == "-" {
@@ -169,7 +178,8 @@ func jsonNumberParser (input: String) -> parseResult {
     
 }
 
-func stringParser (input:String) -> parseResult {
+
+func stringParser (input:String) -> ParseResult {
     var rest = input
     if input[input.startIndex] != "\"" {
         return nil
@@ -198,7 +208,7 @@ func stringParser (input:String) -> parseResult {
 }
 
 
-func commaParser(input: String) -> parseResult {
+func commaParser(input: String) -> ParseResult {
     var rest = input
     if rest[rest.startIndex] != "," {
         return nil
@@ -208,7 +218,7 @@ func commaParser(input: String) -> parseResult {
 }
 
 
-func colonParser (input: String) -> parseResult {
+func colonParser (input: String) -> ParseResult {
     var rest = input
     var m = rest[rest.startIndex]
     if m != ":" {
@@ -230,7 +240,7 @@ func isSpace(space: String) -> Bool {
 }
 
 
-func spaceParser (input: String) -> parseResult {
+func spaceParser (input: String) -> ParseResult {
     var rest = input
     var m = rest[rest.startIndex]
     var output = ""
@@ -248,7 +258,7 @@ func spaceParser (input: String) -> parseResult {
 }
 
 
-func arrayParser (input: String) -> parseResult {
+func arrayParser (input: String) -> ParseResult {
     if input[input.startIndex] != "[" {
         return nil
     }
@@ -259,7 +269,7 @@ func arrayParser (input: String) -> parseResult {
         if let result = spaceParser(input: rest) {
             rest = result.rest
         }
-        if let result = valueParser (input: rest) {
+        if let result = valueParser (rest) {
             output.append(result.output)
             rest = result.rest
         }
@@ -278,7 +288,7 @@ func arrayParser (input: String) -> parseResult {
 }
 
 
-func objectParser (input: String) -> parseResult {
+func objectParser (input: String) -> ParseResult {
     if input[input.startIndex] != "{" {
         return nil
     }
@@ -307,7 +317,7 @@ func objectParser (input: String) -> parseResult {
         if let result = spaceParser(input: rest) {
             rest = result.rest
         }
-        if let result = valueParser(input: rest) {
+        if let result = valueParser(rest) {
             value = result.output
             rest = result.rest
         }
@@ -327,38 +337,14 @@ func objectParser (input: String) -> parseResult {
 }
 
 
-func valueParser (input: String) -> parseResult {
-    if let result = boolParser (input: input) {
-        return (result.output as Any, result.rest)
-    }
-    if let result = jsonNumberParser (input: input) {
-        return (result.output as Any, result.rest)
-    }
-    if let result = stringParser (input: input) {
-        return (result.output as Any, result.rest)
-    }
-    if let result = nullParser (input: input) {
-        return (result.output as Any, result.rest)
-    }
-    if let result = arrayParser (input: input) {
-        return (result.output as Any, result.rest)
-    }
-    if let result = objectParser (input: input) {
-        return (result.output as Any, result.rest)
-    }
-    return nil
-}
+let valueParser = factoryParser(parsers: nullParser, boolParser, jsonNumberParser, stringParser, arrayParser, objectParser)
 
+let jsonParser = factoryParser(parsers: arrayParser, objectParser)
 
-func jsonParser (input: String) -> parseResult {
-    if let result = arrayParser(input: input) {
-        return (result.output, result.rest)
-    }
-    if let result = objectParser(input: input) {
-        return (result.output, result.rest)
-    }
-    return nil
-}
+let path = "/Users/mbp13/Documents/Swift/document1.txt"
+let fileContents = try? String(contentsOfFile: path, encoding:String.Encoding.utf8)
+var file = fileContents!
 
-print(jsonParser(input: file)?.output as Any)
+print(jsonParser(file)?.output as Any)
+
 
