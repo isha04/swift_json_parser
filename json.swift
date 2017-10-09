@@ -3,51 +3,6 @@ import Foundation
 typealias ParseResult = (output: Any, rest: String)?
 typealias Parser = (String) -> ParseResult
 
-func factoryParser (parsers: Parser...) -> Parser {
-    func newParser(input: String) -> ParseResult {
-        for parser in parsers {
-            if let result = parser(input) {
-                return result
-            }
-        }
-        return nil
-    }
-    return newParser
-}
-
-struct Null {}
-
-func nullParser (input: String) -> ParseResult {
-    if input.count < 4 {
-        return nil
-    }
-    let output = String(input[...input.index(input.startIndex, offsetBy: 3)])
-    if output == "null" {
-        let rest = String(input[input.index(input.startIndex, offsetBy: 4)...])
-        return (Null(), rest)
-    }
-    return nil
-}
-
-func boolParser (input: String) -> ParseResult {
-    if input.count < 5 {
-        return nil
-    }
-    var value = String(input[...input.index(input.startIndex, offsetBy: 3)])
-    if value == "true" {
-        let output = Bool(value)!
-        let rest = String(input[input.index(input.startIndex, offsetBy: 4)...])
-        return(output,rest)
-    }
-    value = String(input[...input.index(input.startIndex, offsetBy: 4)])
-    if value == "false" {
-        let output = Bool(value)!
-        let rest = String(input[input.index(input.startIndex, offsetBy: 5)...])
-        return(output,rest)
-    }
-    return nil
-}
-
 
 func isDigit(value: String) -> Bool {
     if value >= "0" && value <= "9" {
@@ -154,60 +109,6 @@ func intFloatParser (input: String) -> ParseResult {
 }
 
 
-func jsonNumberParser (input: String) -> ParseResult {
-    var rest = input
-    var minusFlag = 1
-    if rest[rest.startIndex] == "-" {
-        minusFlag = -1
-        rest.remove(at: rest.startIndex)
-    }
-    if isDigit(value: String(rest[rest.startIndex])) == false {
-        return nil
-    }
-    var output = Double()
-    if let result = zeroParser(input: rest) {
-        output = result.output as! Double
-        rest = result.rest
-    }
-    if let result = intFloatParser(input: rest) {
-        output = result.output as! Double
-        rest = result.rest
-    }
-    output = output * Double(minusFlag)
-    return(output, rest)
-    
-}
-
-
-func stringParser (input:String) -> ParseResult {
-    var rest = input
-    if input[input.startIndex] != "\"" {
-        return nil
-    }
-    var isEscape = false
-    rest.remove(at: rest.startIndex)
-    var output = ""
-    while rest[rest.startIndex] != "\"" && isEscape == false {
-        var m = rest[rest.startIndex]
-        if String(m) == "\\" && rest[rest.index (rest.startIndex, offsetBy: 1)] == "\"" {
-            isEscape = true
-        } else {
-            rest.remove(at: rest.startIndex)
-            output = output + String(m)
-        }
-        if isEscape == true {
-            output = output + "\\" + "\""
-            rest.remove(at: rest.startIndex)
-            rest.remove(at: rest.startIndex)
-            m = rest[rest.startIndex]
-            isEscape = false
-        }
-    }
-    rest.remove(at: rest.startIndex)
-    return(output, rest)
-}
-
-
 func commaParser(input: String) -> ParseResult {
     var rest = input
     if rest[rest.startIndex] != "," {
@@ -258,6 +159,105 @@ func spaceParser (input: String) -> ParseResult {
 }
 
 
+func factoryParser (parsers: Parser...) -> Parser {
+    func newParser(input: String) -> ParseResult {
+        for parser in parsers {
+            if let result = parser(input) {
+                return result
+            }
+        }
+        return nil
+    }
+    return newParser
+}
+
+
+struct Null {}
+
+func nullParser (input: String) -> ParseResult {
+    if input.count < 4 {
+        return nil
+    }
+    let output = String(input[...input.index(input.startIndex, offsetBy: 3)])
+    if output == "null" {
+        let rest = String(input[input.index(input.startIndex, offsetBy: 4)...])
+        return (Null(), rest)
+    }
+    return nil
+}
+
+
+func boolParser (input: String) -> ParseResult {
+    if input.count < 5 {
+        return nil
+    }
+    var value = String(input[...input.index(input.startIndex, offsetBy: 3)])
+    if value == "true" {
+        let output = Bool(value)!
+        let rest = String(input[input.index(input.startIndex, offsetBy: 4)...])
+        return(output,rest)
+    }
+    value = String(input[...input.index(input.startIndex, offsetBy: 4)])
+    if value == "false" {
+        let output = Bool(value)!
+        let rest = String(input[input.index(input.startIndex, offsetBy: 5)...])
+        return(output,rest)
+    }
+    return nil
+}
+
+
+func jsonNumberParser (input: String) -> ParseResult {
+    var rest = input
+    var minusFlag = 1
+    if rest[rest.startIndex] == "-" {
+        minusFlag = -1
+        rest.remove(at: rest.startIndex)
+    }
+    if isDigit(value: String(rest[rest.startIndex])) == false {
+        return nil
+    }
+    var output = Double()
+    if let result = zeroParser(input: rest) {
+        output = result.output as! Double
+        rest = result.rest
+    }
+    if let result = intFloatParser(input: rest) {
+        output = result.output as! Double
+        rest = result.rest
+    }
+    output = output * Double(minusFlag)
+    return(output, rest)
+    
+}
+
+
+func stringParser (input: String) -> ParseResult {
+    if input[input.startIndex] != "\"" {
+        return nil
+    }
+    var rest = input
+    rest.remove(at: rest.startIndex)
+    var isEscape = false
+    var output = ""
+    while rest.isEmpty == false {
+        let m = rest[rest.startIndex]
+        rest.remove(at: rest.startIndex)
+        if m == "\"" && isEscape == false {
+            break
+        }
+        output = output + String(m)
+        if m != "\\" {
+            isEscape = false
+        }
+        if m == "\\" {
+            isEscape = true
+        }
+    }
+    return (output, rest)
+}
+
+
 func arrayParser (input: String) -> ParseResult {
     if input[input.startIndex] != "[" {
         return nil
@@ -265,7 +265,7 @@ func arrayParser (input: String) -> ParseResult {
     var rest = input
     var output = [Any]()
     rest.remove(at: rest.startIndex)
-    while rest[rest.startIndex] != "]" {
+    while rest[rest.startIndex] !=   "]" {
         if let result = spaceParser(input: rest) {
             rest = result.rest
         }
@@ -341,10 +341,7 @@ let valueParser = factoryParser(parsers: nullParser, boolParser, jsonNumberParse
 
 let jsonParser = factoryParser(parsers: arrayParser, objectParser)
 
-let path = "/Users/mbp13/Documents/Swift/document1.txt"
+let path = "/Users/mbp13/Documents/Swift/bigTwitter.txt"
 let fileContents = try? String(contentsOfFile: path, encoding:String.Encoding.utf8)
 var file = fileContents!
-
 print(jsonParser(file)?.output as Any)
-
-
