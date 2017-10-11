@@ -125,7 +125,7 @@ func colonParser (input: Substring) -> ParseResult {
 }
 
 
-func isSpace(space: String) -> Bool {
+func isSpace(space: Character) -> Bool {
     switch space {
     case " ", "\t", "\n", "\r": return true
     default: return false
@@ -135,7 +135,7 @@ func isSpace(space: String) -> Bool {
 
 func spaceParser (input: Substring) -> ParseResult {
     var m = input[input.startIndex]
-    var has_space = isSpace(space: String(m))
+    var has_space = isSpace(space: m)
     if has_space == false {
         return nil
     }
@@ -143,7 +143,7 @@ func spaceParser (input: Substring) -> ParseResult {
     while has_space == true {
         index = input.index(after: index)
         m = input[index]
-        has_space = isSpace(space: String(m))
+        has_space = isSpace(space: m)
     }
     let output = input[..<index]
     let rest = input[index...]
@@ -273,7 +273,7 @@ func arrayParser (input: Substring) -> ParseResult {
             rest = result.rest
         }
     }
-    rest.remove(at: rest.startIndex)
+    rest = rest[input.index(after: rest.startIndex)...]
     return(output, rest)
 }
 
@@ -321,7 +321,7 @@ func objectParser (input: Substring) -> ParseResult {
         }
         output[key] = value
     }
-    rest.remove(at: rest.startIndex)
+    rest = rest[input.index(after: rest.startIndex)...]
     return (output, rest)
 }
 
