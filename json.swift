@@ -1,37 +1,38 @@
 import Foundation
 
-typealias ParseResult = (output: Any, rest: String)?
-typealias Parser = (String) -> ParseResult
+typealias ParseResult = (output: Any, rest: Substring)?
+typealias Parser = (Substring) -> ParseResult
 
-func isDigit(value: String) -> Bool {
+func isDigit(value: Character) -> Bool {
     if value >= "0" && value <= "9" {
         return true
     }
     return false
 }
 
-func digitParser (input: String) -> ParseResult {
+func digitParser (input: Substring) -> ParseResult {
     var c = input[input.startIndex]
     var index = input.startIndex
-    if isDigit(value: String(c)) == false {
+    if isDigit(value: c) == false {
         return nil
     }
-    while isDigit(value: String(c)) {
+    while isDigit(value: c) {
         index = input.index(after: index)
         c = input[index]
     }
     let output = input[..<index]
-    let rest = String(input[index...])
+    let rest = input[index...]
     return (output,rest)
 }
 
-func exponentParser (input: String) -> ParseResult {
+
+func exponentParser (input: Substring) -> ParseResult {
     if input[input.startIndex] == "e" || input[input.startIndex] == "E" {
         var output = String(input[input.startIndex])
-        var rest = String(input[input.index(after: input.startIndex)...])
+        var rest = input[input.index(after: input.startIndex)...]
         if rest.hasPrefix("+") == true || rest.hasPrefix("-") == true {
             output = output + String(rest[rest.startIndex])
-            rest = String(rest[rest.index(after: rest.startIndex)...])
+            rest = rest[rest.index(after: rest.startIndex)...]
         }
         if let result = digitParser(input: rest) {
             output = output + String(describing: result.output)
@@ -43,10 +44,10 @@ func exponentParser (input: String) -> ParseResult {
 }
 
 
-func fractionParser(input: String) -> ParseResult {
+func fractionParser(input: Substring) -> ParseResult {
     
     if input[input.startIndex] == "." {
-        var rest = String(input[input.index(after: input.startIndex)...])
+        var rest = input[input.index(after: input.startIndex)...]
         var output = "."
         if let result = digitParser(input: rest) {
             output = output + String(describing: result.output)
@@ -57,12 +58,13 @@ func fractionParser(input: String) -> ParseResult {
     return nil
 }
 
-func zeroParser(input: String) -> ParseResult {
+
+func zeroParser(input: Substring) -> ParseResult {
     if input[input.startIndex] != "0" {
         return nil
     }
     var number = "0"
-    var rest = String(input[input.index(after: input.startIndex)...])
+    var rest = input[input.index(after: input.startIndex)...]
     if let result = fractionParser(input: rest) {
         number = number + String(describing: result.output)
         rest = result.rest
@@ -75,8 +77,8 @@ func zeroParser(input: String) -> ParseResult {
     return (output, rest)
 }
 
-func intFloatParser (input: String) -> ParseResult {
-    if input[input.startIndex] == "0" || isDigit(value: String(input[input.startIndex])) == false {
+func intFloatParser (input: Substring) -> ParseResult {
+    if input[input.startIndex] == "0" || isDigit(value: input[input.startIndex]) == false {
         return nil
     }
     var rest = input
@@ -98,16 +100,17 @@ func intFloatParser (input: String) -> ParseResult {
     return (output, rest)
 }
 
-func commaParser(input: String) -> ParseResult {
+
+func commaParser(input: Substring) -> ParseResult {
     if input[input.startIndex] != "," {
         return nil
     }
-    let rest = String(input[input.index(after: input.startIndex)...])
+    let rest = input[input.index(after: input.startIndex)...]
     return (",", rest)
 }
 
 
-func colonParser (input: String) -> ParseResult {
+func colonParser (input: Substring) -> ParseResult {
     var m = input[input.startIndex]
     if m != ":" {
         return nil
@@ -117,7 +120,7 @@ func colonParser (input: String) -> ParseResult {
         m = input[index]
         index = input.index(after: index)
     }
-    let rest = String(input[index...])
+    let rest = input[index...]
     return (":", rest)
 }
 
@@ -130,7 +133,7 @@ func isSpace(space: String) -> Bool {
 }
 
 
-func spaceParser (input: String) -> ParseResult {
+func spaceParser (input: Substring) -> ParseResult {
     var m = input[input.startIndex]
     var has_space = isSpace(space: String(m))
     if has_space == false {
@@ -143,13 +146,13 @@ func spaceParser (input: String) -> ParseResult {
         has_space = isSpace(space: String(m))
     }
     let output = input[..<index]
-    let rest = String(input[index...])
+    let rest = input[index...]
     return(output, rest)
 }
 
 
 func factoryParser (parsers: Parser...) -> Parser {
-    func newParser(input: String) -> ParseResult {
+    func newParser(input: Substring) -> ParseResult {
         for parser in parsers {
             if let result = parser(input) {
                 return result
@@ -163,47 +166,47 @@ func factoryParser (parsers: Parser...) -> Parser {
 
 struct Null {}
 
-func nullParser (input: String) -> ParseResult {
+func nullParser (input: Substring) -> ParseResult {
     if input.count < 4 {
         return nil
     }
     let output = String(input[...input.index(input.startIndex, offsetBy: 3)])
     if output == "null" {
-        let rest = String(input[input.index(input.startIndex, offsetBy: 4)...])
+        let rest = input[input.index(input.startIndex, offsetBy: 4)...]
         return (Null(), rest)
     }
     return nil
 }
 
 
-func boolParser (input: String) -> ParseResult {
+func boolParser (input: Substring) -> ParseResult {
     if input.count < 5 {
         return nil
     }
     var value = String(input[...input.index(input.startIndex, offsetBy: 3)])
     if value == "true" {
         let output = Bool(value)!
-        let rest = String(input[input.index(input.startIndex, offsetBy: 4)...])
+        let rest = input[input.index(input.startIndex, offsetBy: 4)...]
         return(output,rest)
     }
     value = String(input[...input.index(input.startIndex, offsetBy: 4)])
     if value == "false" {
         let output = Bool(value)!
-        let rest = String(input[input.index(input.startIndex, offsetBy: 5)...])
+        let rest = input[input.index(input.startIndex, offsetBy: 5)...]
         return(output,rest)
     }
     return nil
 }
 
 
-func jsonNumberParser (input: String) -> ParseResult {
+func jsonNumberParser (input: Substring) -> ParseResult {
     var rest = input
     var minusFlag = 1
     if rest[rest.startIndex] == "-" {
         minusFlag = -1
-        rest.remove(at: rest.startIndex)
+        rest = rest[rest.index(after: rest.startIndex)...]
     }
-    if isDigit(value: String(rest[rest.startIndex])) == false {
+    if isDigit(value: rest[rest.startIndex]) == false {
         return nil
     }
     var output = Double()
@@ -219,7 +222,8 @@ func jsonNumberParser (input: String) -> ParseResult {
     return(output, rest)
 }
 
-func stringParser (input: String) -> ParseResult {
+
+func stringParser (input: Substring) -> ParseResult {
     if input[input.startIndex] != "\"" {
         return nil
     }
@@ -238,19 +242,19 @@ func stringParser (input: String) -> ParseResult {
         }
         index = input.index(after: index)
     }
-    let output = String(input[input.index(after: input.startIndex)..<index])
+    let output = input[input.index(after: input.startIndex)..<index]
     index = input.index(after: index)
-    let rest = String(input[index...])
+    let rest = input[index...]
     return (output, rest)
 }
 
 
-func arrayParser (input: String) -> ParseResult {
+func arrayParser (input: Substring) -> ParseResult {
     if input[input.startIndex] != "[" {
         return nil
     }
     var output = [Any]()
-    var rest = String(input[input.index(after: input.startIndex)...])
+    var rest = input[input.index(after: input.startIndex)...]
     while rest[rest.startIndex] !=   "]" {
         if let result = spaceParser(input: rest) {
             rest = result.rest
@@ -274,14 +278,14 @@ func arrayParser (input: String) -> ParseResult {
 }
 
 
-func objectParser (input: String) -> ParseResult {
+func objectParser (input: Substring) -> ParseResult {
     if input[input.startIndex] != "{" {
         return nil
     }
     var key = ""
     var value: Any?
     var output = [String: Any]()
-    var rest = String(input[input.index(after: input.startIndex)...])
+    var rest = input[input.index(after: input.startIndex)...]
     while rest[rest.startIndex] != "}" {
         if let result = spaceParser(input: rest) {
             rest = result.rest
@@ -324,13 +328,11 @@ func objectParser (input: String) -> ParseResult {
 let valueParser = factoryParser(parsers: nullParser, boolParser, jsonNumberParser, stringParser, arrayParser, objectParser)
 let jsonParser = factoryParser(parsers: arrayParser, objectParser)
 
-let path = "/Users/mbp13/Documents/Swift/bigTwitter.txt"
-let fileContents = try? String(contentsOfFile: path, encoding:String.Encoding.utf8)
-var file = fileContents!
+let path = "/Users/mbp13/Documents/Swift/twitter.txt"
+let fileContents = (try? String(contentsOfFile: path, encoding:String.Encoding.utf8))!
+var file = fileContents[fileContents.startIndex...]
 let start = CFAbsoluteTimeGetCurrent()
 print(jsonParser(file)?.output as Any)
 let end = CFAbsoluteTimeGetCurrent()
 
 print(end - start)
-
-
