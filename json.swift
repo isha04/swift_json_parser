@@ -23,18 +23,15 @@ func digitParser (input: Substring) -> ParseResult {
 
 func exponentParser (input: Substring) -> ParseResult {
     if input[input.startIndex] == "e" || input[input.startIndex] == "E" {
-        var output = ""
-        output.append(String(input[input.startIndex]))
-        var rest = input[input.index(after: input.startIndex)...]
-        if rest.hasPrefix("+") || rest.hasPrefix("-") {
-            output.append(rest[rest.startIndex])
-            rest = rest[rest.index(after: rest.startIndex)...]
+        var index = input.startIndex
+        if input[input.index(after: index)] == "+" || input[input.index(after: index)] == "-" {
+            index = input.index(after: index)
         }
-        if let result = digitParser(input: rest) {
-            output = output + String(describing: result.output)
-            rest = result.rest
+        if let result = digitParser(input: input[input.index(after: index)...]) {
+            let length = (result.output as! Substring).count
+            index = input.index(index, offsetBy: length)
         }
-        return (output, rest)
+        return (input[...index], input[input.index(after: index)...])
     }
     return nil
 }
@@ -42,55 +39,50 @@ func exponentParser (input: Substring) -> ParseResult {
 func fractionParser(input: Substring) -> ParseResult {
     
     if input[input.startIndex] == "." {
-        var rest = input[input.index(after: input.startIndex)...]
-        var output = "."
-        if let result = digitParser(input: rest) {
-            output = output + String(describing: result.output)
-            rest = result.rest
+        var index = input.startIndex
+        if let result = digitParser(input: input[input.index(after: index)...]) {
+            let length = (result.output as! Substring).count
+            index = input.index(index, offsetBy: length)
         }
-        return (output, rest)
+        return (input[...index], input[input.index(after: index)...])
     }
     return nil
 }
-
 
 func zeroParser(input: Substring) -> ParseResult {
     if input[input.startIndex] != "0" {
         return nil
     }
-    var number = "0"
-    var rest = input[input.index(after: input.startIndex)...]
-    if let result = fractionParser(input: rest) {
-        number = number + String(describing: result.output)
-        rest = result.rest
+    var index = input.startIndex
+    if let result = fractionParser(input: input[input.index(after: index)...]) {
+        let length = (result.output as! Substring).count
+        index = input.index(index, offsetBy: length)
     }
-    if let result = exponentParser(input: rest) {
-        number = number + String(describing: result.output)
-        rest = result.rest
+    if let result = exponentParser(input: input[input.index(after: index)...]) {
+        let length = (result.output as! Substring).count
+        index = input.index(index, offsetBy: length)
     }
-    return (Double(number)!, rest)
+    return (input[...index] as Any, input[input.index(after: index)...])
 }
 
 func intFloatParser (input: Substring) -> ParseResult {
-    if input.hasPrefix("0") || !isDigit(value: input[input.startIndex]) {
+    if input[input.startIndex] == "0" || isDigit(value: input[input.startIndex]) == false {
         return nil
     }
-    var rest = input
-    var number = ""
-    if let result = digitParser(input: rest) {
-        rest = result.rest
-        number = number + String(describing: result.output)
-        
-        if let fraction = fractionParser(input: rest) {
-            rest = fraction.rest
-            number = number + String(describing: fraction.output)
-        }
-        if let result = exponentParser(input: rest) {
-            number = number + String(describing: result.output)
-            rest = result.rest
-        }
+    var index = input.startIndex
+    if let result = digitParser(input: input[input.index(after: index)...]) {
+        let length = (result.output as! Substring).count
+        index = input.index(index, offsetBy: length)
     }
-    return (Double(number)!, rest)
+    if let result = fractionParser(input: input[input.index(after: index)...]) {
+        let length = (result.output as! Substring).count
+        index = input.index(index, offsetBy: length)
+    }
+    if let result = exponentParser(input: input[input.index(after: index)...]) {
+        let length = (result.output as! Substring).count
+        index = input.index(index, offsetBy: length)
+    }
+    return (input[...index], input[input.index(after: index)...])
 }
 
 
@@ -174,49 +166,48 @@ func boolParser (input: Substring) -> ParseResult {
 }
 
 
-func jsonNumberParser (input: Substring) -> ParseResult {
-    var rest = input
-    var minusFlag = 1
-    if rest[rest.startIndex] == "-" {
-        minusFlag = -1
-        rest = rest[rest.index(after: rest.startIndex)...]
+func jsonNumberParser(input: Substring) -> ParseResult {
+    var index = input.startIndex
+    if input[index] == "-" {
+        index = input.index(after: index)
     }
-    if isDigit(value: rest[rest.startIndex]) == false {
+    if !isDigit(value: input[index])  {
         return nil
     }
-    var output = Double()
-    if let result = zeroParser(input: rest) {
-        output = result.output as! Double
-        rest = result.rest
+    if let result = zeroParser(input: input[index...]) {
+        let length = (result.output as! Substring).count
+        index = input.index(index, offsetBy: length)
     }
-    if let result = intFloatParser(input: rest) {
-        output = result.output as! Double
-        rest = result.rest
+    if let result = intFloatParser(input: input[index...]) {
+        let length = (result.output as! Substring).count
+        index = input.index(index, offsetBy: length)
     }
-    output = output * Double(minusFlag)
-    return(output, rest)
+    let output = Double(input[..<index])!
+    return (output, input[input.index(after: index)...] )
 }
 
 
-func stringParser (input: Substring) -> ParseResult {
+func stringParser(input: Substring) -> ParseResult {
     if input[input.startIndex] != "\"" {
         return nil
     }
-    var isEscape = false
-    var index = input.index(after: input.startIndex)
-    while index != input.endIndex {
-        let m = input[index]
-        if m == "\"" && isEscape == false {
-            break
+    var isEscape = true
+    func inspectChar(char: Character) -> Bool {
+        if char == "\"" && !isEscape {
+            return true
         }
-        if m == "\\" {
+        if char == "\\" {
             isEscape = true
         } else {
             isEscape = false
         }
-        index = input.index(after: index)
+        return false
     }
-    return (input[input.index(after: input.startIndex)..<index], input[input.index(after: index)...])
+    if let index = input.index(where: inspectChar) {
+        return (input[input.index(after: input.startIndex)...input.index(before: index)],
+                input[input.index(after: index)...])
+    }
+    return nil
 }
 
 
